@@ -77,16 +77,16 @@ exp_entrez <- exp_raw %>%
 
 
 # Preprocess clinical ------------------
-patient <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_clinical_patient.txt", skip = 4, na.strings = c("")) %>%
+patient <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_clinical_patient.txt", skip = 4, na.strings = c("", "-", "NA", "[Not Available]", "[Not Applicable]")) %>%
   filter(PATIENT_ID %in% (colnames(exp) %>% str_remove("-01$")))
 
-sample <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_clinical_sample.txt", skip = 4, na.strings = c("")) %>%
+sample <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_clinical_sample.txt", skip = 4, na.strings = c("", "-", "NA", "[Not Available]", "[Not Applicable]")) %>%
   filter(SAMPLE_ID %in% colnames(exp))
 
-patient_legacy <- fread("data/raw_data/brca_tcga/data_clinical_patient.txt", skip = 4, na.strings = c("", "[Not Available]")) %>%
+patient_legacy <- fread("data/raw_data/brca_tcga/data_clinical_patient.txt", skip = 4, na.strings = c("", "-", "NA", "[Not Available]", "[Not Applicable]")) %>%
   filter(PATIENT_ID %in% (colnames(exp) %>% str_remove("-01$")))
 
-sample_legacy <- fread("data/raw_data/brca_tcga/data_clinical_sample.txt", skip = 4, na.strings = c("", "[Not Available]")) %>%
+sample_legacy <- fread("data/raw_data/brca_tcga/data_clinical_sample.txt", skip = 4, na.strings = c("", "-", "NA", "[Not Available]", "[Not Applicable]")) %>%
   filter(SAMPLE_ID %in% colnames(exp))
 
 # curated histotypes # from A Thennavan - 2021 --------------------
