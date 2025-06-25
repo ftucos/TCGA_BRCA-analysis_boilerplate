@@ -54,7 +54,6 @@ if (nrow(dup_entrez) > 0) {
   cat("No duplicated Entrez ID found.\n")
 }
 
-
 # remove duplicated genes, keeping the one with the highest mean expression
 exp_entrez <- exp_raw %>%
   # add a column with mean expression for each gene
@@ -88,6 +87,12 @@ patient_legacy <- fread("data/raw_data/brca_tcga/data_clinical_patient.txt", ski
 
 sample_legacy <- fread("data/raw_data/brca_tcga/data_clinical_sample.txt", skip = 4, na.strings = c("", "-", "NA", "[Not Available]", "[Not Applicable]")) %>%
   filter(SAMPLE_ID %in% colnames(exp))
+
+treatment <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_timeline_treatment.txt", na.strings = c("")) %>%
+  summarize(TREATMENT_TYPE = paste(sort(unique(TREATMENT_TYPE)), collapse = "; "),
+    TREATMENT_SUBTYPE = paste(sort(unique(TREATMENT_SUBTYPE)), collapse = "; "),
+    AGENT = paste(sort(unique(str_remove(AGENT, "(?<=Radiation) [0-9]+"))), collapse = "; "),
+    .by = PATIENT_ID)
 
 # curated histotypes # from A Thennavan - 2021 --------------------
 # re-annotation of papillary neoplasm
@@ -123,7 +128,7 @@ clinical_curated <- read_excel("data/raw_data/TCGA_third_party_data/Liu_et_al-20
                                    "Pre (<6 months since LMP AND no prior bilateral ovariectomy AND not on estrogen replacement)" = "Pre",
                                    .missing = "Indeterminate/Unknown") %>%
            factor(levels = c( "Post", "Peri", "Pre", "Indeterminate/Unknown"))) %>%
-  select(PATIENT_ID = bcr_patient_barcode, menopause_status)
+  select(PATIENT_ID = bcr_patient_barcode, Menopause_status = menopause_status)
 
 # from 1082 patients, removed 1 phylloides, and 2 solid/papillary carcinoma, 12 males --> 1067
 metadata <- full_join(
@@ -132,6 +137,8 @@ metadata <- full_join(
     SAMPLE_ID, PATIENT_ID, CANCER_TYPE_DETAILED, TUMOR_TYPE,
     ANEUPLOIDY_SCORE, TMB_NONSYNONYMOUS, TBL_SCORE, MSI_SCORE_MANTIS, MSI_SENSOR_SCORE)
   ) %>%
+  left_join(treatment %>%
+              select(PATIENT_ID, TREATMENT_TYPE, TREATMENT_SUBTYPE, AGENT)) %>%
   # reorganize some columns and rename others
   mutate(
          pT = str_extract(PATH_T_STAGE, "T[0-4X]") %>% factor(levels = c("T1", "T2", "T3", "T4", "TX")),
@@ -180,12 +187,13 @@ metadata <- full_join(
   # add curated menopausal state
   left_join(clinical_curated) %>%
   # for patients missing in the annotation
-  mutate(menopause_status = replace_na(menopause_status, "Indeterminate/Unknown")) %>%
-  select("PATIENT_ID", "SAMPLE_ID", "Age" = "AGE", "Age_10_years_increase", "Sex" = "SEX", "menopause_status", "Neoadjuvant_therapy" = "HISTORY_NEOADJUVANT_TRTYN",
+  mutate(Menopause_status = replace_na(Menopause_status, "Indeterminate/Unknown")) %>%
+  select("PATIENT_ID", "SAMPLE_ID", "Age" = "AGE", "Age_10_years_increase", "Sex" = "SEX", "Menopause_status", "Neoadjuvant_therapy" = "HISTORY_NEOADJUVANT_TRTYN",
          "Pam50" = "SUBTYPE",
          "Histotype", "Histotype_PanCancerAtlas" = "CANCER_TYPE_DETAILED_PANCANCERATLAS", "Histotype_Legacy" = "CANCER_TYPE_DETAILED_LEGACY", "Histotype_Thennavan_2021",
          "Aneuploidy_score" = "ANEUPLOIDY_SCORE", "TMB" = "TMB_NONSYNONYMOUS", "TBL" = "TBL_SCORE", "MSI_MANTIS" = "MSI_SCORE_MANTIS", "MSI_Sensor" = "MSI_SENSOR_SCORE",
-         "OS", "OS_years", "DSS", "DSS_years", "DFS", "DFS_years", "PFS", "PFS_years"
+         "OS", "OS_years", "DSS", "DSS_years", "DFS", "DFS_years", "PFS", "PFS_years",
+         "Treatment_type" = "TREATMENT_TYPE", "Treatment_subtype" = "TREATMENT_SUBTYPE", "Treatment_agent" = "AGENT"
          )
 
 compare_histology_annotations <- xtabs(data = metadata, ~ Histotype_PanCancerAtlas + Histotype_Legacy + Histotype + Histotype_Thennavan_2021) %>%
@@ -198,21 +206,21 @@ metadata.1 <- metadata %>%
 
 # Impute menopausal state ------------------------------
 ggplot(metadata.1 %>% filter(Sex == "Female")) +
-  geom_quasirandom( aes(x=Age, y = menopause_status, color = menopause_status),size = 0.2) +
+  geom_quasirandom( aes(x=Age, y = Menopause_status, color = Menopause_status),size = 0.2) +
   geom_vline(xintercept = 45, linetype = "dashed", color = "black") +
   geom_vline(xintercept = 55, linetype = "dashed", color = "black") +
   theme_bw() + theme(legend.position = "none")
 
 metadata.2 <- metadata.1 %>%
   # impute menopausal state
-  mutate(menopause_status_imputed = case_when(
+  mutate(Menopause_status_imputed = case_when(
     Sex == "Male" ~ "Indeterminate",
-    menopause_status != "Indeterminate/Unknown" ~ menopause_status,
+    Menopause_status != "Indeterminate/Unknown" ~ Menopause_status,
     Age < 45 ~ "Pre",
     Age >= 45 & Age < 55 ~ "Peri",
     Age >= 55 ~ "Post",
   ) %>% factor(levels = c("Post", "Peri", "Pre", "Indeterminate/Unknown"))) %>%
-  relocate(menopause_status_imputed, .after = menopause_status)
+  relocate(Menopause_status_imputed, .after = Menopause_status)
 
 # Recompute Pam50 and SCMOD2 ---------------
 
@@ -254,7 +262,6 @@ pam50_class <- pam50_classification[["subtype"]] %>%
   rename("Pam50" =  ".") %>%
   mutate(Pam50 = factor(Pam50, levels = c("LumA", "LumB", "Her2", "Basal", "Normal")))
 
-
 # update metadata with new classifications --------------------
 metadata.3 <- metadata.2 %>%
   left_join(pam50_class, by = "SAMPLE_ID", suffix = c("", "_NEW")) %>%
@@ -262,7 +269,6 @@ metadata.3 <- metadata.2 %>%
 
 # some differences in Her2 and LumB vs A classification
 table(metadata.3$Pam50, metadata.3$Pam50_NEW)
-
 
 metadata.4 <- metadata.3 %>% 
   select(-Pam50, Pam50 = Pam50_NEW) %>%
@@ -275,14 +281,14 @@ saveRDS(metadata.4, "data/processed/TCGA_BRCA-metadata.rds")
 
 # Export counts
 exp_df <- exp[,metadata.4$SAMPLE_ID] %>%
-  as.data.frame() %>%
-  rownames_to_column("external_gene_name") 
+  as.data.frame() %>%  
+  rownames_to_column("external_gene_name")
 
 exp_df_zscore <- exp[,metadata.4$SAMPLE_ID] %>%
   {log2(. + 1)} %>%
   t() %>% scale() %>% t() %>%
   as.data.frame() %>%
-  rownames_to_column("external_gene_name") 
+  rownames_to_column("external_gene_name")
 
 fwrite(exp_df, "data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem.tsv.gz", compress = "gzip", sep = "\t", quote = FALSE)
 fwrite(exp_df_zscore, "data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem_log_zscores.tsv.gz", compress = "gzip", sep = "\t", quote = FALSE)
