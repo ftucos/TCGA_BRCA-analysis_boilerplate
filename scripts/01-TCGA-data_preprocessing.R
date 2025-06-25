@@ -130,7 +130,6 @@ clinical_curated <- read_excel("data/raw_data/TCGA_third_party_data/Liu_et_al-20
            factor(levels = c( "Post", "Peri", "Pre", "Indeterminate/Unknown"))) %>%
   select(PATIENT_ID = bcr_patient_barcode, Menopause_status = menopause_status)
 
-# from 1082 patients, removed 1 phylloides, and 2 solid/papillary carcinoma, 12 males --> 1067
 metadata <- full_join(
   patient,
   sample %>% select(
