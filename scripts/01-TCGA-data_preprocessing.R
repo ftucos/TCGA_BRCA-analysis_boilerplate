@@ -284,5 +284,5 @@ exp_df_zscore <- exp[,metadata.4$SAMPLE_ID] %>%
   as.data.frame() %>%
   rownames_to_column("external_gene_name") 
 
-write_tsv(exp_df, "data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem.tsv")
-write_tsv(exp_df_zscore, "data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem_log_zscores.tsv")
+fwrite(exp_df, "data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem.tsv.gz", compress = "gzip", sep = "\t", quote = FALSE)
+fwrite(exp_df_zscore, "data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem_log_zscores.tsv.gz", compress = "gzip", sep = "\t", quote = FALSE)
