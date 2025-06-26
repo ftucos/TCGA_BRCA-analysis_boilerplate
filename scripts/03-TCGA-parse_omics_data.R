@@ -13,7 +13,8 @@ exp <- fread("data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem.tsv
 
 metadata <- readRDS("data/processed/TCGA_BRCA-metadata.rds")
 
-# scores <- fread("data/interim/GSVA/stemness_scores-GSVA.tsv")
+scores <- fread("data/interim/GSVA/singscore_scores.tsv")
+
 metadata <- metadata %>%
   left_join(scores)
 
@@ -57,14 +58,19 @@ if(length(CNA_of_interest) > 0) {
 }
 
 if(length(mut_of_interes) > 0) {
-
-  gene_mutations <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_mutations.txt")
+  # Regex string for PIK3CA variants of interest according to OncoKB (2026-06-01)
+  PIK3CA_variants <- "(C420R|E542K|E545[ADGKQ]|G1049R|H1047[LRY]|M1043[IV]|N345K|Q546[EKPR]|R88Q)"
+  # Regex string for PIK3CA variants of interest according to ESCAT 2019
+  # PIK3CA_variants <- "H1047R|H1047L|E542K|E545K|E545A"
+  gene_mutations_raw <- fread("data/raw_data/brca_tcga_pan_can_atlas_2018/data_mutations.txt")
+  gene_mutations <- gene_mutations_raw %>%
+    filter(Hugo_Symbol %in% mut_of_interes) %>%
+    filter(Hugo_Symbol == "AKT1" & str_detect(HGVSp_Short, "E17K") | # excluded  p.*2* (1), p.L52R (1), p.V416= (1), p.V4L (1)
+           Hugo_Symbol == "PIK3CA" & str_detect(HGVSp_Short, PIK3CA_variants) |
+           Hugo_Symbol == "PTEN" & str_detect(HGVSp_Short, "R130*|Q171*|G129E")) %>%
+    select(SAMPLE_ID = Tumor_Sample_Barcode)
   
   }
-
-
-
-
 
 
 # used to plot all the scores at one with faceting variable
