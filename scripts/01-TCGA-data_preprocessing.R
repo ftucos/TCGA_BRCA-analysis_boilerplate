@@ -188,7 +188,7 @@ metadata <- full_join(
   # for patients missing in the annotation
   mutate(Menopause_status = replace_na(Menopause_status, "Indeterminate/Unknown")) %>%
   select("PATIENT_ID", "SAMPLE_ID", "Age" = "AGE", "Age_10_years_increase", "Sex" = "SEX", "Menopause_status", "Neoadjuvant_therapy" = "HISTORY_NEOADJUVANT_TRTYN",
-         "Pam50" = "SUBTYPE",
+         "Pam50" = "SUBTYPE", "pT", "pN", "pM", "AJCC_Stage",
          "Histotype", "Histotype_PanCancerAtlas" = "CANCER_TYPE_DETAILED_PANCANCERATLAS", "Histotype_Legacy" = "CANCER_TYPE_DETAILED_LEGACY", "Histotype_Thennavan_2021",
          "Aneuploidy_score" = "ANEUPLOIDY_SCORE", "TMB" = "TMB_NONSYNONYMOUS", "TBL" = "TBL_SCORE", "MSI_MANTIS" = "MSI_SCORE_MANTIS", "MSI_Sensor" = "MSI_SENSOR_SCORE",
          "OS", "OS_years", "DSS", "DSS_years", "DFS", "DFS_years", "PFS", "PFS_years",
