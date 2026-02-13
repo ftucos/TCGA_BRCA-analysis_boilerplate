@@ -6,6 +6,12 @@ library(data.table)
 library(R.utils) # required for reading gzipped files
 library(tidyverse)
 library(glue)
+library(hgnc)
+
+# load mappting to previous hgnc symbols to ensure that all genes in the signatures are correctly mapped to the expression dataset
+#hgnc_symbols <- import_hgnc_dataset(file = latest_archive_url())
+hgnc_symbols <- import_hgnc_dataset(file = "https://storage.googleapis.com/download/storage/v1/b/public-download-files/o/hgnc%2Farchive%2Farchive%2Fmonthly%2Ftsv%2Fhgnc_complete_set_2026-02-06.tsv?generation=1770386172064944&alt=media")
+
 
 # Load Data
 exp <- fread("data/processed/deduplicated_and_filtered-data_mrna_seq_v2_rsem.tsv.gz") %>%
@@ -18,8 +24,34 @@ msigdb <- msigdbr(species = "Homo sapiens")
 
 signatures <- c("HALLMARK_PI3K_AKT_MTOR_SIGNALING")
 
+
+look_for_prev_symbol <- function(x, exp_symbol_list) {
+  
+  # gene not in the expr list
+  mismatch <- !x %in% exp_symbol_list
+  
+  # corresponding previous symbols
+  prev_symbols <- crosswalk(x, from = "symbol", to = "prev_symbol", hgnc_dataset = hgnc_symbols)
+  # keep only previous symbols that are in the expression dataset
+  prev_symbols_match <- lapply(prev_symbols, FUN =  function(x) x[x %in% exp_symbol_list])
+  
+  # replace no match with NULL
+  prev_symbols_match <- lapply(prev_symbols_match, function(v) {
+    if (is.null(v) || length(v) == 0) NULL else as.character(v)
+  })
+  
+  valid_replacements <- !unlist(lapply(prev_symbols_match, is.null))
+  
+  
+  result <- ifelse(mismatch & valid_replacements, prev_symbols_match, x) %>% unlist()
+  result
+}
+
 gsNames2signaturesList <- function(signature_name) {
-  msigdb %>% filter(gs_name == signature_name) %>% pull("gene_symbol") %>% unique()
+  msigdb %>% filter(gs_name == signature_name) %>%
+    pull("gene_symbol") %>%
+    unique() %>%
+    look_for_prev_symbol(exp_symbol_list = rownames(exp))
 }
 
 signatures_list <- signatures %>%
