@@ -275,6 +275,7 @@ metadata.4 <- metadata.3 %>%
   relocate(Pam50, SCMOD2, .before = Aneuploidy_score)
 
 # Export --------------
+dir.create("data/processed/", showWarnings = FALSE)
 write_tsv(metadata.4, "data/processed/TCGA_BRCA-metadata.tsv")
 saveRDS(metadata.4, "data/processed/TCGA_BRCA-metadata.rds")
 
